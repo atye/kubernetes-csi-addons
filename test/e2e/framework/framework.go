@@ -29,6 +29,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
@@ -166,9 +167,56 @@ func (f *Framework) Cleanup() {
 	ctx, cancel := context.WithTimeout(context.Background(), f.Config.Timeout)
 	defer cancel()
 
-	// Delete created resources in reverse order
+	// Delete created resources in reverse order, but wait for VGRs to complete deletion
+	// before deleting VGRCs to avoid race condition where controller tries to fetch
+	// VGRC during VGR deletion
+	var vgrResources []client.Object
+	var otherResources []client.Object
+
 	for i := len(f.CreatedResources) - 1; i >= 0; i-- {
 		resource := f.CreatedResources[i]
+		kind := resource.GetObjectKind().GroupVersionKind().Kind
+		if kind == "" {
+			kind = fmt.Sprintf("%T", resource)
+		}
+		
+		// Separate VGRs from other resources
+		if kind == "VolumeGroupReplication" {
+			vgrResources = append(vgrResources, resource)
+		} else {
+			otherResources = append(otherResources, resource)
+		}
+	}
+
+	// Delete VGRs first
+	for _, resource := range vgrResources {
+		kind := resource.GetObjectKind().GroupVersionKind().Kind
+		if kind == "" {
+			kind = fmt.Sprintf("%T", resource)
+		}
+		ginkgo.By(fmt.Sprintf("Deleting %s/%s", kind, resource.GetName()))
+		err := f.Client.Delete(ctx, resource)
+		if err != nil && !apierrors.IsNotFound(err) {
+			ginkgo.By(fmt.Sprintf("Warning: Failed to delete resource: %v", err))
+		}
+	}
+
+	// Wait for all VGRs to be fully deleted before proceeding
+	if len(vgrResources) > 0 {
+		ginkgo.By("Waiting for VolumeGroupReplications to be fully deleted before deleting other resources")
+		for _, resource := range vgrResources {
+			err := wait.PollUntilContextTimeout(ctx, 2*time.Second, f.Config.Timeout, true, func(ctx context.Context) (bool, error) {
+				err := f.Client.Get(ctx, client.ObjectKeyFromObject(resource), resource)
+				return apierrors.IsNotFound(err), nil
+			})
+			if err != nil {
+				ginkgo.By(fmt.Sprintf("Warning: Timeout waiting for VGR %s to be deleted", resource.GetName()))
+			}
+		}
+	}
+
+	// Now delete other resources (including VGRCs)
+	for _, resource := range otherResources {
 		kind := resource.GetObjectKind().GroupVersionKind().Kind
 		if kind == "" {
 			kind = fmt.Sprintf("%T", resource)
@@ -356,4 +404,13 @@ func (f *Framework) GetVolumeGroupReplicationProvisioner() string {
 // GetVolumeGroupReplicationParameters returns the parameters for VolumeGroupReplicationClass from config
 func (f *Framework) GetVolumeGroupReplicationParameters() map[string]string {
 	return f.Config.VolumeGroupReplication.Parameters
+}
+
+// IsVolumeGroupReplicationModeSYNC returns true if the configured replication mode is SYNC
+func (f *Framework) IsVolumeGroupReplicationModeSYNC() bool {
+	params := f.Config.VolumeGroupReplication.Parameters
+	if mode, ok := params["replication.storage.dell.com/replicationMode"]; ok {
+		return mode == "SYNC"
+	}
+	return false
 }
