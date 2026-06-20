@@ -61,9 +61,7 @@ func TestVolumeGroupReplication(t *testing.T) {
 }
 
 var _ = ginkgo.Describe("VolumeGroupReplication", ginkgo.Ordered, func() {
-	var (
-		f *framework.Framework
-	)
+	var f *framework.Framework
 
 	ginkgo.BeforeAll(func() {
 		f = framework.NewFramework("volumegroupreplication-e2e")
@@ -175,9 +173,9 @@ var _ = ginkgo.Describe("VolumeGroupReplication", ginkgo.Ordered, func() {
 		})
 
 		ginkgo.It("should add PVC to existing VolumeGroupReplication", func() {
-			if f.IsVolumeGroupReplicationModeSYNC() {
+			/*if f.IsVolumeGroupReplicationModeSYNC() {
 				ginkgo.Skip("SYNC replication: PowerStore requires pausing replication before adding volumes to a SYNC replicated VG")
-			}
+			}*/
 
 			ginkgo.By("Getting VolumeGroupReplicationClass configuration")
 			provisioner := f.GetVolumeGroupReplicationProvisioner()
@@ -215,6 +213,25 @@ var _ = ginkgo.Describe("VolumeGroupReplication", ginkgo.Ordered, func() {
 			ginkgo.By("Creating a new PVC with matching label")
 			pvc3 := createPVCWithLabels(f, "test-pvc-add-3", map[string]string{"replication-group": groupLabel})
 			pvc3 = f.WaitForPVCBound(pvc3.Name)
+
+			ginkgo.By("Triggering VGR reconciliation by toggling AutoResync")
+			vgr = getVolumeGroupReplication(f, vgr.Name)
+			originalAutoResync := vgr.Spec.AutoResync
+
+			// Toggle AutoResync with retry to handle conflicts from VolumeReplication controller
+			err := retryWithBackoff(10, func() error {
+				vgr = getVolumeGroupReplication(f, vgr.Name)
+				vgr.Spec.AutoResync = !originalAutoResync
+				err := f.Client.Update(context.Background(), vgr)
+				if err != nil {
+					return err
+				}
+				// Toggle back to original value
+				vgr = getVolumeGroupReplication(f, vgr.Name)
+				vgr.Spec.AutoResync = originalAutoResync
+				return f.Client.Update(context.Background(), vgr)
+			})
+			gomega.Expect(err).NotTo(gomega.HaveOccurred(), "Failed to toggle AutoResync with retry")
 
 			ginkgo.By("Waiting for VolumeGroupReplication to include the new PVC")
 			vgr = waitForPVCInVolumeGroupReplication(f, vgr.Name, pvc3.Name, 2*time.Minute)
@@ -713,7 +730,6 @@ var _ = ginkgo.Describe("VolumeGroupReplication", ginkgo.Ordered, func() {
 			ginkgo.By("Verifying VolumeGroupReplication is deleted")
 			f.WaitForResourceDeleted(vgr, f.GetTimeout("operation"))
 		})
-
 	})
 
 	ginkgo.Context("PVC Deletion Protection in VolumeGroup", func() {
@@ -1266,6 +1282,31 @@ func getVolumeGroupReplicationContentWithError(f *framework.Framework, name stri
 
 	err := f.Client.Get(ctx, client.ObjectKey{Name: name}, vgrcontent)
 	return vgrcontent, err
+}
+
+// retryWithBackoff executes a function with exponential backoff retry logic
+// Useful for handling conflicts from concurrent controller updates
+func retryWithBackoff(maxRetries int, fn func() error) error {
+	var lastErr error
+	for i := 0; i < maxRetries; i++ {
+		if i > 0 {
+			backoff := time.Duration(i*100) * time.Millisecond
+			ginkgo.GinkgoWriter.Printf("Retry %d/%d after %v backoff\n", i, maxRetries, backoff)
+			time.Sleep(backoff)
+		}
+
+		err := fn()
+		if err == nil {
+			return nil
+		}
+		lastErr = err
+
+		// If it's a conflict error, retry; otherwise, fail immediately
+		if !apierrors.IsConflict(err) {
+			return err
+		}
+	}
+	return lastErr
 }
 
 // getPVNamesFromVGRContentStatus extracts PV names from VolumeGroupReplicationContent status

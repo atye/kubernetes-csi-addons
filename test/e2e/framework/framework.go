@@ -175,13 +175,9 @@ func (f *Framework) Cleanup() {
 
 	for i := len(f.CreatedResources) - 1; i >= 0; i-- {
 		resource := f.CreatedResources[i]
-		kind := resource.GetObjectKind().GroupVersionKind().Kind
-		if kind == "" {
-			kind = fmt.Sprintf("%T", resource)
-		}
-		
-		// Separate VGRs from other resources
-		if kind == "VolumeGroupReplication" {
+
+		// Separate VGRs from other resources using type assertion
+		if _, ok := resource.(*replicationv1alpha1.VolumeGroupReplication); ok {
 			vgrResources = append(vgrResources, resource)
 		} else {
 			otherResources = append(otherResources, resource)
