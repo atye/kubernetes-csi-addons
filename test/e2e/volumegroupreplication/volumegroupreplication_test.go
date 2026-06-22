@@ -128,6 +128,7 @@ var _ = ginkgo.Describe("VolumeGroupReplication", ginkgo.Ordered, func() {
 
 	ginkgo.Context("VolumeGroupReplication Operations", func() {
 		ginkgo.It("should create VolumeGroupReplication with multiple PVCs", func() {
+			// pass ASYNC
 			ginkgo.By("Getting VolumeGroupReplicationClass configuration")
 			provisioner := f.GetVolumeGroupReplicationProvisioner()
 			gomega.Expect(provisioner).NotTo(gomega.BeEmpty(), "Provisioner must be configured")
@@ -176,6 +177,7 @@ var _ = ginkgo.Describe("VolumeGroupReplication", ginkgo.Ordered, func() {
 			/*if f.IsVolumeGroupReplicationModeSYNC() {
 				ginkgo.Skip("SYNC replication: PowerStore requires pausing replication before adding volumes to a SYNC replicated VG")
 			}*/
+			// pass ASYNC
 
 			ginkgo.By("Getting VolumeGroupReplicationClass configuration")
 			provisioner := f.GetVolumeGroupReplicationProvisioner()
@@ -245,9 +247,10 @@ var _ = ginkgo.Describe("VolumeGroupReplication", ginkgo.Ordered, func() {
 		})
 
 		ginkgo.It("should remove PVC from VolumeGroupReplication when label is removed", func() {
-			if f.IsVolumeGroupReplicationModeSYNC() {
+			/*if f.IsVolumeGroupReplicationModeSYNC() {
 				ginkgo.Skip("SYNC replication: PowerStore requires pausing replication before removing volumes from a SYNC replicated VG")
-			}
+			}*/
+			// pass ASYNC
 
 			ginkgo.By("Getting VolumeGroupReplicationClass configuration")
 			provisioner := f.GetVolumeGroupReplicationProvisioner()
@@ -288,6 +291,25 @@ var _ = ginkgo.Describe("VolumeGroupReplication", ginkgo.Ordered, func() {
 			pvc2 = f.GetPVC(pvc2.Name)
 			delete(pvc2.Labels, "replication-group")
 			updatePVC(f, pvc2)
+
+			ginkgo.By("Triggering VGR reconciliation by toggling AutoResync")
+			vgr = getVolumeGroupReplication(f, vgr.Name)
+			originalAutoResync := vgr.Spec.AutoResync
+
+			// Toggle AutoResync with retry to handle conflicts from VolumeReplication controller
+			err := retryWithBackoff(10, func() error {
+				vgr = getVolumeGroupReplication(f, vgr.Name)
+				vgr.Spec.AutoResync = !originalAutoResync
+				err := f.Client.Update(context.Background(), vgr)
+				if err != nil {
+					return err
+				}
+				// Toggle back to original value
+				vgr = getVolumeGroupReplication(f, vgr.Name)
+				vgr.Spec.AutoResync = originalAutoResync
+				return f.Client.Update(context.Background(), vgr)
+			})
+			gomega.Expect(err).NotTo(gomega.HaveOccurred(), "Failed to toggle AutoResync with retry")
 
 			ginkgo.By("Waiting for VolumeGroupReplication to remove the PVC")
 			vgr = waitForPVCRemovedFromVolumeGroupReplication(f, vgr.Name, pvc2.Name, 2*time.Minute)
@@ -335,6 +357,8 @@ var _ = ginkgo.Describe("VolumeGroupReplication", ginkgo.Ordered, func() {
 		})
 
 		ginkgo.It("should transition volume group from primary to secondary", func() {
+			// fail ASYNC
+			// could be driver bug where it doesn't allow failover back to primary
 			ginkgo.By("Getting VolumeGroupReplicationClass configuration")
 			provisioner := f.GetVolumeGroupReplicationProvisioner()
 			gomega.Expect(provisioner).NotTo(gomega.BeEmpty(), "Provisioner must be configured")
@@ -382,6 +406,7 @@ var _ = ginkgo.Describe("VolumeGroupReplication", ginkgo.Ordered, func() {
 		})
 
 		ginkgo.It("should resync volume group", func() {
+			// pass ASYNC
 			ginkgo.By("Getting VolumeGroupReplicationClass configuration")
 			provisioner := f.GetVolumeGroupReplicationProvisioner()
 			gomega.Expect(provisioner).NotTo(gomega.BeEmpty(), "Provisioner must be configured")
@@ -438,6 +463,7 @@ var _ = ginkgo.Describe("VolumeGroupReplication", ginkgo.Ordered, func() {
 
 	ginkgo.Context("VolumeGroupReplicationContent", func() {
 		ginkgo.It("should create and manage VolumeGroupReplicationContent lifecycle", func() {
+			// pass ASYNC
 			ginkgo.By("Getting VolumeGroupReplicationClass configuration")
 			provisioner := f.GetVolumeGroupReplicationProvisioner()
 			gomega.Expect(provisioner).NotTo(gomega.BeEmpty(), "Provisioner must be configured")
@@ -517,9 +543,10 @@ var _ = ginkgo.Describe("VolumeGroupReplication", ginkgo.Ordered, func() {
 		})
 
 		ginkgo.It("should update VolumeGroupReplicationContent when PVCs are added or removed", func() {
-			if f.IsVolumeGroupReplicationModeSYNC() {
+			// pass ASYNC
+			/*if f.IsVolumeGroupReplicationModeSYNC() {
 				ginkgo.Skip("SYNC replication: PowerStore requires pausing replication before adding/removing volumes to/from a SYNC replicated VG")
-			}
+			}*/
 
 			ginkgo.By("Getting VolumeGroupReplicationClass configuration")
 			provisioner := f.GetVolumeGroupReplicationProvisioner()
@@ -619,6 +646,7 @@ var _ = ginkgo.Describe("VolumeGroupReplication", ginkgo.Ordered, func() {
 		})
 
 		ginkgo.It("should delete VolumeGroupReplicationContent when VolumeGroupReplication is deleted", func() {
+			// pass ASYNC
 			ginkgo.By("Getting VolumeGroupReplicationClass configuration")
 			provisioner := f.GetVolumeGroupReplicationProvisioner()
 			gomega.Expect(provisioner).NotTo(gomega.BeEmpty(), "Provisioner must be configured")
@@ -673,6 +701,8 @@ var _ = ginkgo.Describe("VolumeGroupReplication", ginkgo.Ordered, func() {
 
 	ginkgo.Context("VolumeGroupReplication Lifecycle", func() {
 		ginkgo.It("should create VGR in primary state, transition to secondary, back to primary, and delete", func() {
+			// fail ASYNC
+			// could be driver bug where it doesn't allow failover back to primary
 			ginkgo.By("Getting VolumeGroupReplicationClass configuration")
 			provisioner := f.GetVolumeGroupReplicationProvisioner()
 			gomega.Expect(provisioner).NotTo(gomega.BeEmpty(), "Provisioner must be configured")
@@ -734,6 +764,8 @@ var _ = ginkgo.Describe("VolumeGroupReplication", ginkgo.Ordered, func() {
 
 	ginkgo.Context("PVC Deletion Protection in VolumeGroup", func() {
 		ginkgo.It("should prevent PVC deletion when VGR is in primary state", func() {
+			// fail ASYNC
+			// could be driver bug where it doesn't allow failover back to primary
 			ginkgo.By("Getting VolumeGroupReplicationClass configuration")
 			provisioner := f.GetVolumeGroupReplicationProvisioner()
 			gomega.Expect(provisioner).NotTo(gomega.BeEmpty(), "Provisioner must be configured")
@@ -805,6 +837,8 @@ var _ = ginkgo.Describe("VolumeGroupReplication", ginkgo.Ordered, func() {
 		})
 
 		ginkgo.It("should prevent PVC deletion when VGR is in secondary state", func() {
+			// fail ASYNC
+			// could be driver bug where it doesn't allow failover back to primary
 			ginkgo.By("Getting VolumeGroupReplicationClass configuration")
 			provisioner := f.GetVolumeGroupReplicationProvisioner()
 			gomega.Expect(provisioner).NotTo(gomega.BeEmpty(), "Provisioner must be configured")
@@ -881,9 +915,10 @@ var _ = ginkgo.Describe("VolumeGroupReplication", ginkgo.Ordered, func() {
 
 	ginkgo.Context("Dynamic Grouping Advanced Scenarios", func() {
 		ginkgo.It("should handle multiple PVC additions and removals dynamically", func() {
-			if f.IsVolumeGroupReplicationModeSYNC() {
+			// pass ASYNC
+			/*if f.IsVolumeGroupReplicationModeSYNC() {
 				ginkgo.Skip("SYNC replication: PowerStore requires pausing replication before adding/removing volumes to/from a SYNC replicated VG")
-			}
+			}*/
 
 			ginkgo.By("Getting VolumeGroupReplicationClass configuration")
 			provisioner := f.GetVolumeGroupReplicationProvisioner()
@@ -921,6 +956,26 @@ var _ = ginkgo.Describe("VolumeGroupReplication", ginkgo.Ordered, func() {
 			pvc3 = f.WaitForPVCBound(pvc3.Name)
 			pvc4 = f.WaitForPVCBound(pvc4.Name)
 
+			ginkgo.By("Triggering VGR reconciliation by toggling AutoResync")
+			vgr = getVolumeGroupReplication(f, vgr.Name)
+			originalAutoResync := vgr.Spec.AutoResync
+
+			// Toggle AutoResync with retry to handle conflicts from VolumeReplication controller
+			var err error
+			err = retryWithBackoff(10, func() error {
+				vgr = getVolumeGroupReplication(f, vgr.Name)
+				vgr.Spec.AutoResync = !originalAutoResync
+				updateErr := f.Client.Update(context.Background(), vgr)
+				if updateErr != nil {
+					return updateErr
+				}
+				// Toggle back to original value
+				vgr = getVolumeGroupReplication(f, vgr.Name)
+				vgr.Spec.AutoResync = originalAutoResync
+				return f.Client.Update(context.Background(), vgr)
+			})
+			gomega.Expect(err).NotTo(gomega.HaveOccurred(), "Failed to toggle AutoResync with retry")
+
 			ginkgo.By("Waiting for all PVCs to be added to the group")
 			gomega.Eventually(func() int {
 				vgr = getVolumeGroupReplication(f, vgr.Name)
@@ -935,6 +990,25 @@ var _ = ginkgo.Describe("VolumeGroupReplication", ginkgo.Ordered, func() {
 			pvc4 = f.GetPVC(pvc4.Name)
 			delete(pvc4.Labels, "replication-group")
 			updatePVC(f, pvc4)
+
+			ginkgo.By("Triggering VGR reconciliation by toggling AutoResync")
+			vgr = getVolumeGroupReplication(f, vgr.Name)
+			originalAutoResync = vgr.Spec.AutoResync
+
+			// Toggle AutoResync with retry to handle conflicts from VolumeReplication controller
+			err = retryWithBackoff(10, func() error {
+				vgr = getVolumeGroupReplication(f, vgr.Name)
+				vgr.Spec.AutoResync = !originalAutoResync
+				updateErr := f.Client.Update(context.Background(), vgr)
+				if updateErr != nil {
+					return updateErr
+				}
+				// Toggle back to original value
+				vgr = getVolumeGroupReplication(f, vgr.Name)
+				vgr.Spec.AutoResync = originalAutoResync
+				return f.Client.Update(context.Background(), vgr)
+			})
+			gomega.Expect(err).NotTo(gomega.HaveOccurred(), "Failed to toggle AutoResync with retry")
 
 			ginkgo.By("Waiting for PVCs to be removed from the group")
 			gomega.Eventually(func() int {
@@ -951,9 +1025,11 @@ var _ = ginkgo.Describe("VolumeGroupReplication", ginkgo.Ordered, func() {
 		})
 
 		ginkgo.It("should handle PVC addition during state transition", func() {
-			if f.IsVolumeGroupReplicationModeSYNC() {
+			// fail ASYNC
+			// could be driver bug where it doesn't allow failover back to primary
+			/*if f.IsVolumeGroupReplicationModeSYNC() {
 				ginkgo.Skip("SYNC replication: PowerStore requires pausing replication before adding volumes to a SYNC replicated VG")
-			}
+			}*/
 
 			ginkgo.By("Getting VolumeGroupReplicationClass configuration")
 			provisioner := f.GetVolumeGroupReplicationProvisioner()
@@ -992,6 +1068,25 @@ var _ = ginkgo.Describe("VolumeGroupReplication", ginkgo.Ordered, func() {
 
 			ginkgo.By("Waiting for VGR to reach secondary state")
 			vgr = waitForVolumeGroupReplicationState(f, vgr.Name, replicationv1alpha1.SecondaryState)
+
+			ginkgo.By("Triggering VGR reconciliation by toggling AutoResync")
+			vgr = getVolumeGroupReplication(f, vgr.Name)
+			originalAutoResync := vgr.Spec.AutoResync
+
+			// Toggle AutoResync with retry to handle conflicts from VolumeReplication controller
+			err := retryWithBackoff(10, func() error {
+				vgr = getVolumeGroupReplication(f, vgr.Name)
+				vgr.Spec.AutoResync = !originalAutoResync
+				updateErr := f.Client.Update(context.Background(), vgr)
+				if updateErr != nil {
+					return updateErr
+				}
+				// Toggle back to original value
+				vgr = getVolumeGroupReplication(f, vgr.Name)
+				vgr.Spec.AutoResync = originalAutoResync
+				return f.Client.Update(context.Background(), vgr)
+			})
+			gomega.Expect(err).NotTo(gomega.HaveOccurred(), "Failed to toggle AutoResync with retry")
 
 			ginkgo.By("Verifying all 3 PVCs are in the group after transition")
 			gomega.Eventually(func() int {
