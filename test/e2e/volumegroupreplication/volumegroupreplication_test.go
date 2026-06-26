@@ -174,9 +174,6 @@ var _ = ginkgo.Describe("VolumeGroupReplication", ginkgo.Ordered, func() {
 		})
 
 		ginkgo.It("should add PVC to existing VolumeGroupReplication", func() {
-			/*if f.IsVolumeGroupReplicationModeSYNC() {
-				ginkgo.Skip("SYNC replication: PowerStore requires pausing replication before adding volumes to a SYNC replicated VG")
-			}*/
 			// pass ASYNC
 
 			ginkgo.By("Getting VolumeGroupReplicationClass configuration")
@@ -247,9 +244,6 @@ var _ = ginkgo.Describe("VolumeGroupReplication", ginkgo.Ordered, func() {
 		})
 
 		ginkgo.It("should remove PVC from VolumeGroupReplication when label is removed", func() {
-			/*if f.IsVolumeGroupReplicationModeSYNC() {
-				ginkgo.Skip("SYNC replication: PowerStore requires pausing replication before removing volumes from a SYNC replicated VG")
-			}*/
 			// pass ASYNC
 
 			ginkgo.By("Getting VolumeGroupReplicationClass configuration")
@@ -544,9 +538,6 @@ var _ = ginkgo.Describe("VolumeGroupReplication", ginkgo.Ordered, func() {
 
 		ginkgo.It("should update VolumeGroupReplicationContent when PVCs are added or removed", func() {
 			// pass ASYNC
-			/*if f.IsVolumeGroupReplicationModeSYNC() {
-				ginkgo.Skip("SYNC replication: PowerStore requires pausing replication before adding/removing volumes to/from a SYNC replicated VG")
-			}*/
 
 			ginkgo.By("Getting VolumeGroupReplicationClass configuration")
 			provisioner := f.GetVolumeGroupReplicationProvisioner()
@@ -916,9 +907,6 @@ var _ = ginkgo.Describe("VolumeGroupReplication", ginkgo.Ordered, func() {
 	ginkgo.Context("Dynamic Grouping Advanced Scenarios", func() {
 		ginkgo.It("should handle multiple PVC additions and removals dynamically", func() {
 			// pass ASYNC
-			/*if f.IsVolumeGroupReplicationModeSYNC() {
-				ginkgo.Skip("SYNC replication: PowerStore requires pausing replication before adding/removing volumes to/from a SYNC replicated VG")
-			}*/
 
 			ginkgo.By("Getting VolumeGroupReplicationClass configuration")
 			provisioner := f.GetVolumeGroupReplicationProvisioner()
@@ -1030,7 +1018,6 @@ var _ = ginkgo.Describe("VolumeGroupReplication", ginkgo.Ordered, func() {
 			/*if f.IsVolumeGroupReplicationModeSYNC() {
 				ginkgo.Skip("SYNC replication: PowerStore requires pausing replication before adding volumes to a SYNC replicated VG")
 			}*/
-
 			ginkgo.By("Getting VolumeGroupReplicationClass configuration")
 			provisioner := f.GetVolumeGroupReplicationProvisioner()
 			gomega.Expect(provisioner).NotTo(gomega.BeEmpty(), "Provisioner must be configured")
