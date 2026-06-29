@@ -128,7 +128,6 @@ var _ = ginkgo.Describe("VolumeGroupReplication", ginkgo.Ordered, func() {
 
 	ginkgo.Context("VolumeGroupReplication Operations", func() {
 		ginkgo.It("should create VolumeGroupReplication with multiple PVCs", func() {
-			// pass ASYNC
 			ginkgo.By("Getting VolumeGroupReplicationClass configuration")
 			provisioner := f.GetVolumeGroupReplicationProvisioner()
 			gomega.Expect(provisioner).NotTo(gomega.BeEmpty(), "Provisioner must be configured")
@@ -174,8 +173,6 @@ var _ = ginkgo.Describe("VolumeGroupReplication", ginkgo.Ordered, func() {
 		})
 
 		ginkgo.It("should add PVC to existing VolumeGroupReplication", func() {
-			// pass ASYNC
-
 			ginkgo.By("Getting VolumeGroupReplicationClass configuration")
 			provisioner := f.GetVolumeGroupReplicationProvisioner()
 			gomega.Expect(provisioner).NotTo(gomega.BeEmpty(), "Provisioner must be configured")
@@ -244,8 +241,6 @@ var _ = ginkgo.Describe("VolumeGroupReplication", ginkgo.Ordered, func() {
 		})
 
 		ginkgo.It("should remove PVC from VolumeGroupReplication when label is removed", func() {
-			// pass ASYNC
-
 			ginkgo.By("Getting VolumeGroupReplicationClass configuration")
 			provisioner := f.GetVolumeGroupReplicationProvisioner()
 			gomega.Expect(provisioner).NotTo(gomega.BeEmpty(), "Provisioner must be configured")
@@ -351,8 +346,6 @@ var _ = ginkgo.Describe("VolumeGroupReplication", ginkgo.Ordered, func() {
 		})
 
 		ginkgo.It("should transition volume group from primary to secondary", func() {
-			// fail ASYNC
-			// could be driver bug where it doesn't allow failover back to primary
 			ginkgo.By("Getting VolumeGroupReplicationClass configuration")
 			provisioner := f.GetVolumeGroupReplicationProvisioner()
 			gomega.Expect(provisioner).NotTo(gomega.BeEmpty(), "Provisioner must be configured")
@@ -400,7 +393,6 @@ var _ = ginkgo.Describe("VolumeGroupReplication", ginkgo.Ordered, func() {
 		})
 
 		ginkgo.It("should resync volume group", func() {
-			// pass ASYNC
 			ginkgo.By("Getting VolumeGroupReplicationClass configuration")
 			provisioner := f.GetVolumeGroupReplicationProvisioner()
 			gomega.Expect(provisioner).NotTo(gomega.BeEmpty(), "Provisioner must be configured")
@@ -457,7 +449,6 @@ var _ = ginkgo.Describe("VolumeGroupReplication", ginkgo.Ordered, func() {
 
 	ginkgo.Context("VolumeGroupReplicationContent", func() {
 		ginkgo.It("should create and manage VolumeGroupReplicationContent lifecycle", func() {
-			// pass ASYNC
 			ginkgo.By("Getting VolumeGroupReplicationClass configuration")
 			provisioner := f.GetVolumeGroupReplicationProvisioner()
 			gomega.Expect(provisioner).NotTo(gomega.BeEmpty(), "Provisioner must be configured")
@@ -537,8 +528,6 @@ var _ = ginkgo.Describe("VolumeGroupReplication", ginkgo.Ordered, func() {
 		})
 
 		ginkgo.It("should update VolumeGroupReplicationContent when PVCs are added or removed", func() {
-			// pass ASYNC
-
 			ginkgo.By("Getting VolumeGroupReplicationClass configuration")
 			provisioner := f.GetVolumeGroupReplicationProvisioner()
 			gomega.Expect(provisioner).NotTo(gomega.BeEmpty(), "Provisioner must be configured")
@@ -672,7 +661,6 @@ var _ = ginkgo.Describe("VolumeGroupReplication", ginkgo.Ordered, func() {
 		})
 
 		ginkgo.It("should delete VolumeGroupReplicationContent when VolumeGroupReplication is deleted", func() {
-			// pass ASYNC
 			ginkgo.By("Getting VolumeGroupReplicationClass configuration")
 			provisioner := f.GetVolumeGroupReplicationProvisioner()
 			gomega.Expect(provisioner).NotTo(gomega.BeEmpty(), "Provisioner must be configured")
@@ -727,8 +715,6 @@ var _ = ginkgo.Describe("VolumeGroupReplication", ginkgo.Ordered, func() {
 
 	ginkgo.Context("VolumeGroupReplication Lifecycle", func() {
 		ginkgo.It("should create VGR in primary state, transition to secondary, back to primary, and delete", func() {
-			// fail ASYNC
-			// could be driver bug where it doesn't allow failover back to primary
 			ginkgo.By("Getting VolumeGroupReplicationClass configuration")
 			provisioner := f.GetVolumeGroupReplicationProvisioner()
 			gomega.Expect(provisioner).NotTo(gomega.BeEmpty(), "Provisioner must be configured")
@@ -790,8 +776,6 @@ var _ = ginkgo.Describe("VolumeGroupReplication", ginkgo.Ordered, func() {
 
 	ginkgo.Context("PVC Deletion Protection in VolumeGroup", func() {
 		ginkgo.It("should prevent PVC deletion when VGR is in primary state", func() {
-			// fail ASYNC
-			// could be driver bug where it doesn't allow failover back to primary
 			ginkgo.By("Getting VolumeGroupReplicationClass configuration")
 			provisioner := f.GetVolumeGroupReplicationProvisioner()
 			gomega.Expect(provisioner).NotTo(gomega.BeEmpty(), "Provisioner must be configured")
@@ -863,8 +847,6 @@ var _ = ginkgo.Describe("VolumeGroupReplication", ginkgo.Ordered, func() {
 		})
 
 		ginkgo.It("should prevent PVC deletion when VGR is in secondary state", func() {
-			// fail ASYNC
-			// could be driver bug where it doesn't allow failover back to primary
 			ginkgo.By("Getting VolumeGroupReplicationClass configuration")
 			provisioner := f.GetVolumeGroupReplicationProvisioner()
 			gomega.Expect(provisioner).NotTo(gomega.BeEmpty(), "Provisioner must be configured")
@@ -941,8 +923,6 @@ var _ = ginkgo.Describe("VolumeGroupReplication", ginkgo.Ordered, func() {
 
 	ginkgo.Context("Dynamic Grouping Advanced Scenarios", func() {
 		ginkgo.It("should handle multiple PVC additions and removals dynamically", func() {
-			// pass ASYNC
-
 			ginkgo.By("Getting VolumeGroupReplicationClass configuration")
 			provisioner := f.GetVolumeGroupReplicationProvisioner()
 			gomega.Expect(provisioner).NotTo(gomega.BeEmpty(), "Provisioner must be configured")
@@ -1048,11 +1028,6 @@ var _ = ginkgo.Describe("VolumeGroupReplication", ginkgo.Ordered, func() {
 		})
 
 		ginkgo.It("should handle PVC addition during state transition", func() {
-			// fail ASYNC
-			// could be driver bug where it doesn't allow failover back to primary
-			/*if f.IsVolumeGroupReplicationModeSYNC() {
-				ginkgo.Skip("SYNC replication: PowerStore requires pausing replication before adding volumes to a SYNC replicated VG")
-			}*/
 			ginkgo.By("Getting VolumeGroupReplicationClass configuration")
 			provisioner := f.GetVolumeGroupReplicationProvisioner()
 			gomega.Expect(provisioner).NotTo(gomega.BeEmpty(), "Provisioner must be configured")
