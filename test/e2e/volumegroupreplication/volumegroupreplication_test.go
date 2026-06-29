@@ -588,6 +588,26 @@ var _ = ginkgo.Describe("VolumeGroupReplication", ginkgo.Ordered, func() {
 			pvc3 = f.WaitForPVCBound(pvc3.Name)
 			newPV3 := pvc3.Spec.VolumeName
 
+			ginkgo.By("Triggering VGR reconciliation by toggling AutoResync")
+			vgr = getVolumeGroupReplication(f, vgr.Name)
+			originalAutoResync := vgr.Spec.AutoResync
+
+			// Toggle AutoResync with retry to handle conflicts from VolumeReplication controller
+			var err error
+			err = retryWithBackoff(10, func() error {
+				vgr = getVolumeGroupReplication(f, vgr.Name)
+				vgr.Spec.AutoResync = !originalAutoResync
+				updateErr := f.Client.Update(context.Background(), vgr)
+				if updateErr != nil {
+					return updateErr
+				}
+				// Toggle back to original value
+				vgr = getVolumeGroupReplication(f, vgr.Name)
+				vgr.Spec.AutoResync = originalAutoResync
+				return f.Client.Update(context.Background(), vgr)
+			})
+			gomega.Expect(err).NotTo(gomega.HaveOccurred(), "Failed to toggle AutoResync with retry")
+
 			ginkgo.By("Waiting for VolumeGroupReplication to include the new PVC")
 			vgr = waitForPVCInVolumeGroupReplication(f, vgr.Name, pvc3.Name, 2*time.Minute)
 
@@ -613,6 +633,21 @@ var _ = ginkgo.Describe("VolumeGroupReplication", ginkgo.Ordered, func() {
 			pvc2 = f.GetPVC(pvc2.Name)
 			delete(pvc2.Labels, "replication-group")
 			updatePVC(f, pvc2)
+
+			// Toggle AutoResync with retry to handle conflicts from VolumeReplication controller
+			err = retryWithBackoff(10, func() error {
+				vgr = getVolumeGroupReplication(f, vgr.Name)
+				vgr.Spec.AutoResync = !originalAutoResync
+				updateErr := f.Client.Update(context.Background(), vgr)
+				if updateErr != nil {
+					return updateErr
+				}
+				// Toggle back to original value
+				vgr = getVolumeGroupReplication(f, vgr.Name)
+				vgr.Spec.AutoResync = originalAutoResync
+				return f.Client.Update(context.Background(), vgr)
+			})
+			gomega.Expect(err).NotTo(gomega.HaveOccurred(), "Failed to toggle AutoResync with retry")
 
 			ginkgo.By("Waiting for VolumeGroupReplication to remove the PVC")
 			waitForPVCRemovedFromVolumeGroupReplication(f, vgr.Name, pvc2.Name, 2*time.Minute)
